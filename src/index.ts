@@ -29,6 +29,7 @@ import {
 } from "./infra/ports.js";
 import { assertSupportedRuntime } from "./infra/runtime-guard.js";
 import { installUnhandledRejectionHandler } from "./infra/unhandled-rejections.js";
+import { bootstrapSecretsFromSecretsUtility } from "./infra/secrets-bootstrap.js";
 import { enableConsoleCapture } from "./logging.js";
 import { runCommandWithTimeout, runExec } from "./process/exec.js";
 import { assertWebChannel, normalizeE164, toWhatsappJid } from "./utils.js";
@@ -36,6 +37,7 @@ import { assertWebChannel, normalizeE164, toWhatsappJid } from "./utils.js";
 loadDotEnv({ quiet: true });
 normalizeEnv();
 ensureOpenClawCliOnPath();
+await bootstrapSecretsFromSecretsUtility();
 
 // Capture all console output into structured logs while keeping stdout/stderr behavior.
 enableConsoleCapture();

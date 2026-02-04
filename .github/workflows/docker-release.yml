@@ -42,6 +42,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
+            type=raw,value=sha-${{ github.sha }}
             type=semver,pattern={{version}}
             type=semver,pattern={{version}},suffix=-amd64
             type=semver,pattern={{version}},suffix=-arm64
@@ -91,6 +92,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
+            type=raw,value=sha-${{ github.sha }}
             type=semver,pattern={{version}}
             type=semver,pattern={{version}},suffix=-amd64
             type=semver,pattern={{version}},suffix=-arm64
@@ -132,6 +134,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
+            type=raw,value=sha-${{ github.sha }}
             type=semver,pattern={{version}}
 
       - name: Create and push manifest
@@ -141,3 +144,29 @@ jobs:
             ${{ needs.build-arm64.outputs.image-digest }}
         env:
           DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
+
+  deploy-cluster:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    needs: [create-manifest]
+    steps:
+      - name: Get OIDC token for deploy-runner
+        id: oidc
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('deploy-runner');
+            core.setOutput('token', token);
+
+      - name: Trigger deploy-runner (james3 main)
+        env:
+          DEPLOY_RUNNER_URL: ${{ secrets.DEPLOY_RUNNER_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          curl -fsSL -X POST "${DEPLOY_RUNNER_URL}/v1/deploy" \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"target\":\"james3-main\",\"backend_tag\":\"${IMAGE_TAG}\"}"
