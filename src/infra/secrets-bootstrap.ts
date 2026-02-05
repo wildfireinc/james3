@@ -73,7 +73,16 @@ export async function bootstrapSecretsFromSecretsUtility(opts: BootstrapOptions 
     try {
       await fetchAndSet(k, false);
     } catch (err) {
-      throw new Error(`failed_to_fetch_optional_secret:${project}:${secretsEnv}:${k}:${String(err)}`);
+      // Optional secrets should never prevent the service from starting.
+      // Log to stderr so it is visible in container logs.
+      try {
+        console.error(
+          `[openclaw] optional secret fetch failed (${project}:${secretsEnv}:${k}):`,
+          err instanceof Error ? err.message : String(err),
+        );
+      } catch {
+        // ignore
+      }
     }
   }
 }

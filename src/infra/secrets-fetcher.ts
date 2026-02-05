@@ -185,6 +185,15 @@ export async function getSecretOptional(params: {
     if (err instanceof SecretsFetcherHttpError && err.statusCode === 404) {
       return null;
     }
+    // Secrets Utility returns 5xx when Vault is reachable but the field is missing
+    // (e.g. {"detail":"vault_error:field_not_found"}). Optional secrets should not
+    // crash the service in that case.
+    if (err instanceof SecretsFetcherError) {
+      const msg = String(err.message || "");
+      if (msg.includes("field_not_found")) {
+        return null;
+      }
+    }
     throw err;
   }
 }
